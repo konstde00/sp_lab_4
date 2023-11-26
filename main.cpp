@@ -10,14 +10,7 @@ using namespace std;
 
 const string FILE_NAME = "../input.txt";
 
-void find_first(vector< pair<char, string> > grammar,
-                map< char, set<char> >& firsts,
-                char non_term);
 
-void find_follow(vector< pair<char, string> > grammar,
-                 map< char, set<char> >& follows,
-                 map< char, set<char> > firsts,
-                 char non_term);
 
 // Utility methods:
 fstream open_grammar_file();
@@ -28,6 +21,8 @@ set<char> get_terms(const vector<pair<char, string> >& grammar);
 
 set<char> get_non_terms(const vector<pair<char, string> >& grammar);
 
+set<char> get_epsilon_non_terms(const vector<pair<char, string> >& grammar);
+
 void build_parsing_table(const vector<pair<char, string> >& grammar,
                          const set<char>& non_terms,
                          const set<char>& terms,
@@ -35,12 +30,9 @@ void build_parsing_table(const vector<pair<char, string> >& grammar,
                          map< char, set<char> > follows,
                          int parse_table[100][100]);
 
-map< char, set<char> > get_firsts_list(const vector<pair<char, string> >& grammar,
-                                       const set<char>& non_terms);
+map< char, set<char> > get_firsts_list(const vector<pair<char, string> >& grammar, const set<char>& non_terms);
 
-map< char, set<char> > get_follows_list(const vector<pair<char, string> >& grammar,
-                                        const map<char, set<char> >& firsts,
-                                        const set<char>& non_terms);
+map< char, set<char> > get_follows_list(const vector<pair<char, string> >& grammar, const map<char, set<char> >& firsts, const set<char>& non_terms);
 
 void print_starting_operations(string input_string,
                                const vector<pair<char, string> >& grammar,
@@ -48,7 +40,8 @@ void print_starting_operations(string input_string,
                                int parse_table[100][100]);
 
 
-int main() {
+int main()
+{
 
     cout << "Input string: ";
     string input_string;
@@ -60,6 +53,9 @@ int main() {
 
     set<char> terms = get_terms(grammar);
     set<char> non_terms = get_non_terms(grammar);
+
+
+    set<char> eps_non_terms = get_epsilon_non_terms(grammar);
 
     map<char, set<char> > firsts = get_firsts_list(grammar, non_terms);
 
@@ -73,7 +69,8 @@ int main() {
     return 0;
 }
 
-fstream open_grammar_file() {
+fstream open_grammar_file()
+{
 
     fstream grammar_file;
 
@@ -87,7 +84,8 @@ fstream open_grammar_file() {
     return grammar_file;
 }
 
-vector<pair<char, string>> parse_grammar_file(fstream& grammar_file) {
+vector<pair<char, string>> parse_grammar_file(fstream& grammar_file)
+{
     vector<pair<char, string>> productions;
 
     int count = 0;
@@ -104,7 +102,7 @@ vector<pair<char, string>> parse_grammar_file(fstream& grammar_file) {
 
         // ignore '->'
         iss.ignore(2);
-        
+
         if (!(iss >> production)) {
             throw runtime_error("Error reading production from the grammar file.");
         }
@@ -122,7 +120,8 @@ vector<pair<char, string>> parse_grammar_file(fstream& grammar_file) {
     return productions;
 }
 
-set<char> get_terms(const vector<pair<char, string> >& grammar) {
+set<char> get_terms(const vector<pair<char, string> >& grammar)
+{
 
     set<char> terms;
 
@@ -134,9 +133,6 @@ set<char> get_terms(const vector<pair<char, string> >& grammar) {
         }
     }
 
-    terms.erase('e');
-    terms.insert('$');
-
     cout << "\n";
     cout << "The terminals in the grammar are: ";
 
@@ -146,20 +142,26 @@ set<char> get_terms(const vector<pair<char, string> >& grammar) {
 
     cout << "\n\n";
 
+    terms.erase('e');
+    terms.insert('$');
+
     return terms;
 }
 
-set<char> get_non_terms(const vector<pair<char, string> >& grammar) {
+set<char> get_non_terms(const vector<pair<char, string> >& grammar)
+{
 
     set<char> non_terms;
 
-    for (const auto & i : grammar) {
+    for (const auto & i : grammar)
+    {
         non_terms.insert(i.first);
     }
 
     cout << "The non terminals in the grammar are: ";
 
-    for (char non_term : non_terms) {
+    for (char non_term : non_terms)
+    {
         cout << non_term << " ";
     }
     cout << "\n";
@@ -167,19 +169,205 @@ set<char> get_non_terms(const vector<pair<char, string> >& grammar) {
     return non_terms;
 }
 
+set<char> get_epsilon_non_terms(const vector<pair<char, string>>& grammar) {
+    set<char> epsilon_non_terms;
+
+    for (const auto& i : grammar)
+    {
+        const char non_term = i.first;
+        const string& production = i.second;
+
+        if (production == "e")
+        {
+            epsilon_non_terms.insert(non_term);
+        }
+    }
+
+    cout << "The epsilon non-terminals in the grammar are: ";
+    for (char epsilon_non_term : epsilon_non_terms) {
+        cout << epsilon_non_term << " ";
+    }
+    cout << "\n";
+
+    return epsilon_non_terms;
+}
+
+
+void find_first(vector< pair<char, string> > gram, map< char, set<char> >& firsts, char non_term)
+{
+
+    for (auto it = gram.begin(); it != gram.end(); ++it)
+    {
+        if (it->first != non_term)
+        {
+            continue;
+        }
+
+        string rhs = it->second;
+        for (auto ch = rhs.begin(); ch != rhs.end(); ++ch)
+        {
+            if (!isupper(*ch))
+            {
+                firsts[non_term].insert(*ch);
+                break;
+            }
+            else
+            {
+                if (firsts[*ch].empty())
+                {
+                    find_first(gram, firsts, *ch);
+                }
+                if (firsts[*ch].find('e') == firsts[*ch].end())
+                {
+                    firsts[non_term].insert(firsts[*ch].begin(), firsts[*ch].end());
+                    break;
+                }
+
+                set<char> firsts_copy(firsts[*ch].begin(), firsts[*ch].end());
+
+                if (ch + 1 != rhs.end())
+                {
+                    firsts_copy.erase('e');
+                }
+
+                firsts[non_term].insert(firsts_copy.begin(), firsts_copy.end());
+            }
+        }
+
+    }
+}
+
+void find_follow(vector< pair<char, string> > gram, map< char, set<char> >& follows, map< char, set<char> > firsts, char non_term)
+{
+
+    for (auto it = gram.begin(); it != gram.end(); ++it)
+    {
+        try
+        {
+            bool finished = true;
+            auto ch = it->second.begin();
+            for (; ch != it->second.end(); ++ch)
+            {
+
+                if (*ch == non_term)
+                {
+                    finished = false;
+                    break;
+                }
+            }
+            if (ch != it->second.end())
+            {
+                ++ch;
+            }
+
+            for (; ch != it->second.end() && !finished; ++ch)
+            {
+                if (!isupper(*ch))
+                {
+                    follows[non_term].insert(*ch);
+                    finished = true;
+                    break;
+                }
+
+                set<char> firsts_copy(firsts[*ch]);
+                if (firsts_copy.find('e') == firsts_copy.end())
+                {
+                    follows[non_term].insert(firsts_copy.begin(), firsts_copy.end());
+                    finished = true;
+                    break;
+                }
+                firsts_copy.erase('e');
+                follows[non_term].insert(firsts_copy.begin(), firsts_copy.end());
+
+            }
+
+
+            if (ch == it->second.end() && !finished)
+            {
+                if (follows[it->first].empty())
+                {
+                    find_follow(gram, follows, firsts, it->first);
+                }
+                follows[non_term].insert(follows[it->first].begin(), follows[it->first].end());
+            }
+        }
+        catch (const char* error) {
+        }
+    }
+
+}
+
+map< char, set<char> > get_firsts_list(const vector<pair<char, string> >& grammar, const set<char>& non_terms)
+{
+    map< char, set<char> > firsts;
+    for (char non_term : non_terms)
+    {
+        if (firsts[non_term].empty())
+        {
+            find_first(grammar, firsts, non_term);
+        }
+    }
+
+    cout << "\n";
+    cout << "First_1(): \n";
+
+    for (auto & first : firsts)
+    {
+        cout << first.first << " : ";
+        for (char firsts_it : first.second)
+        {
+            cout << firsts_it << " ";
+        }
+        cout << "\n";
+    }
+
+    return firsts;
+}
+
+map< char, set<char> > get_follows_list(const vector<pair<char, string> >& grammar, const map<char, set<char> >& firsts, const set<char>& non_terms) {
+
+    map< char, set<char> > follows;
+    char start_var = grammar.begin()->first;
+    follows[start_var].insert('e');
+    find_follow(grammar, follows, firsts, start_var);
+
+    for (char non_term : non_terms)
+    {
+        if (follows[non_term].empty())
+        {
+            find_follow(grammar, follows, firsts, non_term);
+        }
+    }
+
+    cout << "\nFollow_1(): \n";
+    for (auto & follow : follows)
+    {
+        cout << follow.first << " : ";
+        for (char follows_it : follow.second)
+        {
+            cout << follows_it << " ";
+        }
+        cout << "\n";
+    }
+    cout << "\n";
+
+    return follows;
+}
+
 void build_parsing_table(const vector<pair<char, string> >& grammar,
-                       const set<char>& non_terms,
-                       const set<char>& terms,
-                       map<char, set<char>> firsts,
-                       map< char, set<char> > follows,
-                       int parse_table[100][100]) {
+                         const set<char>& non_terms,
+                         const set<char>& terms,
+                         map<char, set<char>> firsts,
+                         map< char, set<char> > follows,
+                         int parse_table[100][100])
+{
 
     fill(&parse_table[0][0], &parse_table[0][0] + 10000 / sizeof(parse_table[0][0]), -1);
     for (auto prod = grammar.begin(); prod != grammar.end(); ++prod) {
         string rhs = prod->second;
         set<char> next_list;
         bool finished = false;
-        for (char & rh : rhs) {
+        for (char& rh : rhs) {
             if (!isupper(rh)) {
                 if (rh != 'e') {
                     next_list.insert(rh);
@@ -236,149 +424,11 @@ void build_parsing_table(const vector<pair<char, string> >& grammar,
 }
 
 
-void find_first(vector< pair<char, string> > gram,
-                map< char, set<char> >& firsts,
-                char non_term) {
-
-    for (auto it = gram.begin(); it != gram.end(); ++it) {
-        if (it->first != non_term) {
-            continue;
-        }
-
-        string rhs = it->second;
-        for (auto ch = rhs.begin(); ch != rhs.end(); ++ch) {
-            if (!isupper(*ch)) {
-                firsts[non_term].insert(*ch);
-                break;
-            }
-            else {
-                if (firsts[*ch].empty()) {
-                    find_first(gram, firsts, *ch);
-                }
-                if (firsts[*ch].find('e') == firsts[*ch].end()) {
-                    firsts[non_term].insert(firsts[*ch].begin(), firsts[*ch].end());
-                    break;
-                }
-
-                set<char> firsts_copy(firsts[*ch].begin(), firsts[*ch].end());
-
-                if (ch + 1 != rhs.end()) {
-                    firsts_copy.erase('e');
-                }
-
-                firsts[non_term].insert(firsts_copy.begin(), firsts_copy.end());
-            }
-        }
-
-    }
-}
-
-void find_follow(vector< pair<char, string> > gram,
-                 map< char, set<char> >& follows,
-                 map< char, set<char> > firsts,
-                 char non_term) {
-
-    for (auto it = gram.begin(); it != gram.end(); ++it) {
-        try {
-            bool finished = true;
-            auto ch = it->second.begin();
-            for (; ch != it->second.end(); ++ch) {
-                if (*ch == non_term) {
-                    finished = false;
-                    break;
-                }
-            }
-            if (ch != it->second.end()) {
-                ++ch;
-            }
-
-            for (; ch != it->second.end() && !finished; ++ch) {
-                if (!isupper(*ch)) {
-                    follows[non_term].insert(*ch);
-                    finished = true;
-                    break;
-                }
-
-                set<char> firsts_copy(firsts[*ch]);
-                if (firsts_copy.find('e') == firsts_copy.end()) {
-                    follows[non_term].insert(firsts_copy.begin(), firsts_copy.end());
-                    finished = true;
-                    break;
-                }
-                firsts_copy.erase('e');
-                follows[non_term].insert(firsts_copy.begin(), firsts_copy.end());
-
-            }
-
-
-            if (ch == it->second.end() && !finished) {
-                if (follows[it->first].empty()) {
-                    find_follow(gram, follows, firsts, it->first);
-                }
-                follows[non_term].insert(follows[it->first].begin(), follows[it->first].end());
-            }
-        }
-        catch (const char* error) {
-        }
-    }
-
-}
-
-map< char, set<char> > get_firsts_list(const vector<pair<char, string> >& grammar,
-                                       const set<char>& non_terms) {
-    map< char, set<char> > firsts;
-    for (char non_term : non_terms) {
-        if (firsts[non_term].empty()) {
-            find_first(grammar, firsts, non_term);
-        }
-    }
-
-    cout << "\n";
-    cout << "Firsts list: \n";
-
-    for (auto & first : firsts) {
-        cout << first.first << " : ";
-        for (char firsts_it : first.second) {
-            cout << firsts_it << " ";
-        }
-        cout << "\n";
-    }
-
-    return firsts;
-}
-
-map< char, set<char> > get_follows_list(const vector<pair<char, string> >& grammar,
-                                        const map<char, set<char> >& firsts,
-                                        const set<char>& non_terms) {
-
-    map< char, set<char> > follows;
-    char start_var = grammar.begin()->first;
-    follows[start_var].insert('$');
-    find_follow(grammar, follows, firsts, start_var);
-
-    for (char non_term : non_terms) {
-        if (follows[non_term].empty()) {
-            find_follow(grammar, follows, firsts, non_term);
-        }
-    }
-
-    cout << "\nFollows list: \n";
-    for (auto & follow : follows) {
-        cout << follow.first << " : ";
-        for (char follows_it : follow.second) {
-            cout << follows_it << " ";
-        }
-        cout << "\n";
-    }
-    cout << "\n";
-
-    return follows;
-}
-
 void print_starting_operations(string input_string,
                                const vector<pair<char, string> >& grammar,
                                const set<char>& terms, const set<char>& non_terms,
-                               int parse_table[100][100]) {
+                               int parse_table[100][100])
+{
 
     input_string.push_back('$');
     stack<char> st;
