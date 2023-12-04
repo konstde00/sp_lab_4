@@ -1,3 +1,7 @@
-S->aAb
-A->cAdd
-A->e
+S->A
+A->a
+A->b
+B->a
+B->b
+C->c
+D->d

@@ -114,7 +114,7 @@ vector<pair<char, string>> parse_grammar_file(fstream& grammar_file)
     cout << "Grammar read from file: \n";
     for (auto & production : productions) {
 
-        cout << ++count << ".  " << production.first << " -> " << production.second << "\n";
+        cout << count++ << ".  " << production.first << " -> " << production.second << "\n";
     }
 
     return productions;
@@ -423,6 +423,29 @@ void build_parsing_table(const vector<pair<char, string> >& grammar,
     cout << "\n";
 }
 
+struct TreeNode {
+    char value;
+    vector<TreeNode*> children;
+
+    TreeNode(char val) : value(val) {}
+};
+
+void printAST(TreeNode* root, int depth = 0) {
+    if (root == nullptr) {
+        return;
+    }
+
+    // Print the current node with indentation
+    for (int i = 0; i < depth; ++i) {
+        cout << "  ";
+    }
+    cout << "|_" << root->value << endl;
+
+    // Recursively print the children
+    for (TreeNode* child : root->children) {
+        printAST(child, depth + 1);
+    }
+}
 
 void print_starting_operations(string input_string,
                                const vector<pair<char, string> >& grammar,
@@ -431,11 +454,16 @@ void print_starting_operations(string input_string,
 {
 
     input_string.push_back('$');
+    stack<TreeNode*> astStack;
     stack<char> st;
     st.push('$');
     st.push('S');
 
-    for (char & ch : input_string) {
+    // Start symbol 'S' is initially at the top of the stack
+    TreeNode* root = new TreeNode('S');
+    astStack.push(root);
+
+    for (char& ch : input_string) {
         if (terms.find(ch) == terms.end()) {
             throw invalid_argument("Input string is invalid");
         }
@@ -446,14 +474,14 @@ void print_starting_operations(string input_string,
     while (!st.empty() && !input_string.empty()) {
         if (input_string[0] == st.top()) {
             st.pop();
+//            astStack.pop();
             input_string.erase(0, 1);
         }
         else if (!isupper(st.top())) {
             cout << "Unmatched terminal found\n";
             accepted = false;
             break;
-        }
-        else {
+        } else {
             char stack_top = st.top();
             int row = distance(non_terms.begin(), non_terms.find(stack_top));
             int col = distance(terms.begin(), terms.find(input_string[0]));
@@ -466,22 +494,38 @@ void print_starting_operations(string input_string,
             }
 
             st.pop();
+            TreeNode* currentASTNode = astStack.top();
+            astStack.pop();
+
             string rhs = grammar[prod_num].second;
-            cout << prod_num + 1 << ", ";
+            cout << prod_num << ", ";
             if (rhs[0] == 'e') {
                 continue;
             }
             for (auto ch = rhs.rbegin(); ch != rhs.rend(); ++ch) {
                 st.push(*ch);
+                TreeNode* newNode = new TreeNode(*ch);
+                currentASTNode->children.push_back(newNode);
+//                cout << "Current node: ";
+//                cout << currentASTNode->value;
+//                cout << "\n";
+//                cout << "New node: ";
+//                cout << newNode->value;
+//                cout << "\n";
+                astStack.push(newNode);
             }
         }
     }
 
 
     if (accepted) {
+        cout << "\n";
+        cout << "\n";
         cout << "Input string is accepted\n";
-    }
-    else {
+        cout << "\n";
+        cout << "AST:" << endl;
+        printAST(root);
+    } else {
         cout << "Input string is rejected\n";
     }
 }

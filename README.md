@@ -11,6 +11,8 @@
 2) запрограмувати допоміжні функції: пошук епсилон-нетерміналів, читання і
 розбір введеної граматики, тощо
 
+3) 
+
 ## Граматика задана у файлі input.txt
 
 S->AB
@@ -53,35 +55,62 @@ S  0 0 0
 
 Input string is accepted
 
+## Граматика задана у файлі input.txt
+
+S->A
+A->a
+A->b
+B->a
+B->b
+C->c
+D->d
+
 ## Приклад 2:
 
-Вхідні дані: aa
+Вхідний рядок: a
 
-Grammar parsed from grammar file:
-0.  S -> AB
+Grammar read from file:
+0.  S -> A
 1.  A -> a
-2.  A -> e
-3.  B -> b
-4.  B -> e
+2.  A -> b
+3.  B -> a
+4.  B -> b
+5.  C -> c
+6.  D -> d
 
-The non terminals in the grammar are: A B S
-The terminals in the grammar are: $ a b
+The terminals in the grammar are: a b c d
 
-Firsts list:
-A : a e
-B : b e
-S : a b e
+The non terminals in the grammar are: A B C D S
+The epsilon non-terminals in the grammar are:
 
-Follows list:
-A : $ b
-B : $
-S : $
+First_1():
+A : a b
+B : a b
+C : c
+D : d
+S : a b
+
+Follow_1():
+A : e
+B :
+C :
+D :
+S : e
 
 Parsing Table:
-   $ a b
-A  2 1 2
-B  4 - 3
-S  0 0 0
+$ a b c d
+A  - 1 2 - -
+B  - 3 4 - -
+C  - - - 5 -
+D  - - - - 6
+S  - 0 0 - -
 
-No production found in parse table
-Input string is rejected
+Starting operations:
+0, 1,
+
+Input string is accepted
+
+AST:
+   |_S
+      |_A
+         |_a
